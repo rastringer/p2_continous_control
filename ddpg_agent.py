@@ -9,13 +9,14 @@ import torch
 import torch.nn.functional as F
 import torch.optim as optim
 
-BUFFER_SIZE = int(1e6) # Replay buffer size
-BATCH_SIZE = 128 # Minibatch size
+BUFFER_SIZE = int(1e5) # Replay buffer size
+BATCH_SIZE = 1024 # Minibatch size
 GAMMA = 0.99 # Discount factor
-TAU = 1e-5 # For soft update of target parameters
-LR_ACTOR = 2e-4 # Actor learning rate
-LR_CRITIC = 2e-4 # Critic learning rate
+TAU = 1e-3 # For soft update of target parameters
+LR_ACTOR = 5e-4 # Actor learning rate
+LR_CRITIC = 1e-3 # Critic learning rate
 WEIGHT_DECAY = 0 # L2 weight decay
+NUM_AGENTS = 20
 
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -48,22 +49,23 @@ class Agent():
         self.critic_optimizer = optim.Adam(self.critic_local.parameters(), lr=LR_CRITIC, weight_decay=WEIGHT_DECAY)
 
         # Noise process
-        self.noise = OUNoise(action_size, random_seed)
+        self.noise = OUNoise(action_size, random_seed, sigma=0.1)
 
         # Replay memory
         self.memory = ReplayBuffer(action_size, BUFFER_SIZE, BATCH_SIZE, random_seed)
 
-    def step(self, states, actions, rewards, next_states, dones):
+    def step(self, state, action, reward, next_state, done, timestep):
         """Save experience in replay memory, use random sample from buffer for learning"""
         # Save experience / reward
-        for s, a, r, ns, d in zip(states, actions, rewards, next_states, dones):
-            self.memory.add(s, a, r, ns, d)
+        for i in range(NUM_AGENTS):
+            self.memory.add(state[i], action[i], reward[i], next_state[i], done[i])
 
         # Learn, if sufficient samples available in memory
-        if len(self.memory) > BATCH_SIZE:
-            for _ in range(3):
-                experiences = self.memory.sample()
-                self.learn(experiences, GAMMA)
+        if timestep%10 == 0:
+            if len(self.memory) > BATCH_SIZE:
+                for _ in range(10):
+                    experiences = self.memory.sample()
+                    self.learn(experiences, GAMMA)
 
     def act(self, state, add_noise=True):
         """Returns actions for given state in line with current policy."""

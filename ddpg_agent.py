@@ -10,7 +10,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 BUFFER_SIZE = int(1e5) # Replay buffer size
-BATCH_SIZE = 1024 # Minibatch size
+BATCH_SIZE = 264 # Minibatch size
 GAMMA = 0.99 # Discount factor
 TAU = 1e-3 # For soft update of target parameters
 LR_ACTOR = 5e-4 # Actor learning rate

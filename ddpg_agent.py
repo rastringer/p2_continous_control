@@ -2,6 +2,7 @@ import numpy as np
 import random
 import copy
 from collections import namedtuple, deque
+import math
 
 from model import Actor, Critic
 
@@ -9,14 +10,15 @@ import torch
 import torch.nn.functional as F
 import torch.optim as optim
 
-BUFFER_SIZE = int(1e5) # Replay buffer size
-BATCH_SIZE = 264 # Minibatch size
+BUFFER_SIZE = int(1e6) # Replay buffer size
+BATCH_SIZE = 128 # Minibatch size
 GAMMA = 0.99 # Discount factor
 TAU = 1e-3 # For soft update of target parameters
-LR_ACTOR = 5e-4 # Actor learning rate
+LR_ACTOR = 1e-3 # Actor learning rate
 LR_CRITIC = 1e-3 # Critic learning rate
 WEIGHT_DECAY = 0 # L2 weight decay
 NUM_AGENTS = 20
+UPDATE_SIZE = 20
 
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -61,21 +63,29 @@ class Agent():
             self.memory.add(state[i], action[i], reward[i], next_state[i], done[i])
 
         # Learn, if sufficient samples available in memory
+
+
         if timestep%10 == 0:
             if len(self.memory) > BATCH_SIZE:
-                for _ in range(10):
+                for i in range(10):
                     experiences = self.memory.sample()
                     self.learn(experiences, GAMMA)
 
-    def act(self, state, add_noise=True):
+    def save(self, state, action, reward, next_state, done):
+        """Save experience in replay memory"""
+        self.memory.add(state, action, reward, next_state, done)
+
+    def act(self, state, i_episode, add_noise=True):
         """Returns actions for given state in line with current policy."""
         state = torch.from_numpy(state).float().to(device)
         self.actor_local.eval()
         with torch.no_grad():
             action = self.actor_local(state).cpu().data.numpy()
         self.actor_local.train()
+        
         if add_noise:
-            action += self.noise.sample()
+            for a in action:
+                a += ((1/math.sqrt(i_episode)) * self.noise.sample())
         return np.clip(action, -1, 1)
 
     def reset(self):
